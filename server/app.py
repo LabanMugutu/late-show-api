@@ -44,3 +44,55 @@ api = Api(app)
 def index():
 """Basic index to verify server is running."""
 return jsonify({'message': 'Welcome to the Late Show API!'}), 200
+# ------------------ Resource classes ------------------
+If not found return 404; on success return 204 No Content with empty body.
+"""
+ep = Episode.query.get(id)
+if not ep:
+return {'error': 'Episode not found'}, 404
+db.session.delete(ep)
+db.session.commit()
+return '', 204
+
+
+class GuestsListResource(Resource):
+def get(self):
+"""GET /guests - return array of guest objects (id, name, occupation)"""
+guests = Guest.query.order_by(Guest.id).all()
+return [g.to_dict(simple=True) for g in guests], 200
+
+
+class AppearancesResource(Resource):
+def post(self):
+"""POST /appearances - create a new appearance.
+
+
+Expected JSON:
+{
+"rating": 5,
+"episode_id": 2,
+"guest_id": 3
+}
+
+
+Success: 201 with appearance including nested episode and guest as in spec.
+Validation errors: 400 with {"errors": [ ... ]}
+"""
+data = request.get_json() or {}
+rating = data.get('rating')
+episode_id = data.get('episode_id')
+guest_id = data.get('guest_id')
+
+
+errors = []
+# Basic presence checks
+if rating is None:
+errors.append('rating is required')
+if episode_id is None:
+errors.append('episode_id is required')
+if guest_id is None:
+errors.append('guest_id is required')
+
+
+if errors:
+return {'errors': errors}, 400

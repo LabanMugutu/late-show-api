@@ -52,3 +52,19 @@ return base
 # full representation includes appearances (each appearance shaped per spec)
 base['appearances'] = [a.to_dict(include_guest=True, include_episode=False) for a in self.appearances]
 return base
+
+class Guest(db.Model):
+"""Guest model: id, name, occupation
+
+
+Relationships:
+- appearances: list of Appearance objects
+"""
+
+
+__tablename__ = 'guests'
+
+
+id = db.Column(db.Integer, primary_key=True)
+name = db.Column(db.String, nullable=False)
+occupation = db.Column(db.String, nullable=True)

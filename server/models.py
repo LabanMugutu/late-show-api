@@ -7,3 +7,6 @@ formats described in the challenge. Validations ensure data integrity.
 
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import validates
+# Initialize SQLAlchemy - the app will call db.init_app(app)
+db = SQLAlchemy()
+

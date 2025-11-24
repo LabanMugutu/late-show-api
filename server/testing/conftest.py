@@ -4,6 +4,7 @@ Pytest fixtures: create app with in-memory sqlite and seed minimal data.
 import pytest
 from app import create_app
 from models import db as _db, Episode, Guest
+
 @pytest.fixture
 def app():
     test_config = {

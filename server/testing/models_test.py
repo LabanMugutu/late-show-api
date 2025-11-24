@@ -2,6 +2,7 @@
 Model tests: validate relationships, rating validation and cascade delete behavior.
 """
 from models import Episode, Guest, Appearance, db
+
 def test_create_appearance_valid(app):
     e = Episode.query.first()
     g = Guest.query.first()
@@ -12,3 +13,15 @@ def test_create_appearance_valid(app):
     assert a.rating == 5
     assert a.episode_id == e.id
     assert a.guest_id == g.id
+
+def test_rating_validation_rejects_out_of_range(app):
+    e = Episode.query.first()
+    g = Guest.query.first()
+    try:
+        a = Appearance(rating=6, episode=e, guest=g)
+        db.session.add(a)
+        db.session.commit()
+        assert False, "Should have raised for invalid rating"
+    except Exception:
+        db.session.rollback()
+        assert True

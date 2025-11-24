@@ -1,70 +1,88 @@
-"""
-Database models for the Late Show API. Contains Episode, Guest, and Appearance.
-Models include explicit `to_dict()` methods crafted to match the expected JSON
-formats described in the challenge. Validations ensure data integrity.
-"""
-
-
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import validates
-# Initialize SQLAlchemy - the app will call db.init_app(app)
+from sqlalchemy_serializer import SerializerMixin
+
 db = SQLAlchemy()
 
-class Episode(db.Model):
-"""Episode model: id, date (string), number (int)
+# ============================================================
+# EPISODE MODEL
+# ============================================================
 
+class Episode(db.Model, SerializerMixin):
+    __tablename__ = "episodes"
 
-Relationships:
-- appearances: list of Appearance objects
+    # Prevent infinite recursion when serializing
+    serialize_rules = ("-appearances.episode",)
 
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.String)
+    number = db.Column(db.Integer)
 
-to_dict(simple=True) returns the reduced shape used by GET /episodes.
-to_dict(simple=False) returns the full shape used by GET /episodes/<id>.
-"""
+    # One episode has many appearances
+    appearances = db.relationship(
+        "Appearance",
+        back_populates="episode",
+        cascade="all, delete-orphan"
+    )
 
+    def __repr__(self):
+        return f"<Episode id={self.id}, date={self.date}, number={self.number}>"
 
-__tablename__ = 'episodes'
+# ============================================================
+# GUEST MODEL
+# ============================================================
 
+class Guest(db.Model, SerializerMixin):
+    __tablename__ = "guests"
 
-id = db.Column(db.Integer, primary_key=True)
-date = db.Column(db.String, nullable=False)
-number = db.Column(db.Integer, nullable=False)
-# One-to-many: Episode -> Appearance
-appearances = db.relationship(
-'Appearance', back_populates='episode', cascade='all, delete-orphan'
-)
+    serialize_rules = ("-appearances.guest",)
 
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String)
+    occupation = db.Column(db.String)
 
-def __repr__(self):
-return f"<Episode {self.id} #{self.number} {self.date}>"
+    # One guest has many appearances
+    appearances = db.relationship(
+        "Appearance",
+        back_populates="guest",
+        cascade="all, delete-orphan"
+    )
 
+    def __repr__(self):
+        return f"<Guest id={self.id}, name={self.name}, occupation={self.occupation}>"
 
-def to_dict(self, simple=False):
-"""Return a dictionary matching the API spec.
+# ============================================================
+# APPEARANCE MODEL
+# ============================================================
 
+class Appearance(db.Model, SerializerMixin):
+    __tablename__ = "appearances"
 
-If simple=True returns: {id, date, number}
-If simple=False returns full episode with appearances nested.
-"""
-base = {'id': self.id, 'date': self.date, 'number': self.number}
-if simple:
-return base
-# full representation includes appearances (each appearance shaped per spec)
-base['appearances'] = [a.to_dict(include_guest=True, include_episode=False) for a in self.appearances]
-return base
+    # Prevent recursion when serializing nested objects
+    serialize_rules = ("-episode.appearances", "-guest.appearances")
 
-class Guest(db.Model):
-"""Guest model: id, name, occupation
+    id = db.Column(db.Integer, primary_key=True)
+    rating = db.Column(db.Integer)
 
+    # Foreign Keys
+    episode_id = db.Column(db.Integer, db.ForeignKey("episodes.id"))
+    guest_id = db.Column(db.Integer, db.ForeignKey("guests.id"))
 
-Relationships:
-- appearances: list of Appearance objects
-"""
+    # Relationships
+    episode = db.relationship("Episode", back_populates="appearances")
+    guest = db.relationship("Guest", back_populates="appearances")
 
+    # -----------------------------------------
+    # VALIDATION FOR RATING 1 TO 5
+    # -----------------------------------------
+    @validates("rating")
+    def validate_rating(self, key, value):
+        if value < 1 or value > 5:
+            raise ValueError("Rating must be between 1 and 5.")
+        return value
 
-__tablename__ = 'guests'
-
-
-id = db.Column(db.Integer, primary_key=True)
-name = db.Column(db.String, nullable=False)
-occupation = db.Column(db.String, nullable=True)
+    def __repr__(self):
+        return (
+            f"<Appearance id={self.id}, rating={self.rating}, "
+            f"episode_id={self.episode_id}, guest_id={self.guest_id}>"
+        )
